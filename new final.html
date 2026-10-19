@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Polantuk Online - Voice, Chat & Clean UI Edition</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { margin: 0; overflow: hidden; background: #02050c; color: #fff; touch-action: none; }
+
+        #vignette {
+            position: absolute; inset: 0; pointer-events: none; z-index: 4;
+            background: radial-gradient(circle at center, transparent 55%, rgba(0, 0, 0, 0.85) 100%);
+            transition: box-shadow 0.2s ease;
+        }
+        #flash-overlay {
+            position: absolute; inset: 0; pointer-events: none; z-index: 5;
+            background: #fef9c3; opacity: 0; transition: opacity 0.15s ease-out;
+        }
+
+        /* Top Match Banner */
+        #match-banner {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(8, 14, 28, 0.9); border: 1.5px solid #ffca28;
+            padding: 5px 20px; border-radius: 30px; z-index: 15; display: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.8); text-align: center;
+        }
+        #match-timer { font-size: 20px; font-weight: 900; color: #ffca28; font-family: monospace; letter-spacing: 2px; }
+        #power-status { font-size: 10.5px; color: #38bdf8; font-weight: bold; }
+
+        /* Floating Toggle Buttons for Hidden Panels */
+        .floating-toggle {
+            position: absolute; z-index: 20; background: rgba(10, 16, 32, 0.9);
+            border: 1.5px solid rgba(255, 202, 40, 0.5); color: #ffca28;
+            padding: 8px 14px; border-radius: 25px; font-size: 12.5px; font-weight: 800;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.75);
+            display: none; align-items: center; gap: 6px; transition: all 0.2s;
+        }
+        .floating-toggle:hover { background: #1e293b; transform: scale(1.04); }
+        #btn-toggle-hud { top: 12px; left: 12px; }
+        #btn-toggle-lb { top: 12px; right: 12px; }
+
+        /* Collapsible Left HUD (Hidden by default!) */
+        #hud {
+            position: absolute; top: 54px; left: 12px; width: 275px;
+            background: rgba(8, 12, 24, 0.92); backdrop-filter: blur(12px);
+            padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.85); z-index: 18; display: none;
+        }
+        .hud-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .hud-title h2 { margin: 0; font-size: 16px; color: #ffca28; }
+        .role-badge { font-size: 10.5px; padding: 3px 8px; border-radius: 10px; background: #dc2626; font-weight: bold; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; color: #cbd5e1; }
+        .stat-val { font-weight: 700; }
+
+        .bar-label { display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 7px; font-weight: 600; }
+        .progress-bg { width: 100%; height: 6px; background: #1e293b; border-radius: 6px; overflow: hidden; margin-top: 2px; }
+        #hint-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #f59e0b, #fef08a); }
+        #battery-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #10b981, #a7f3d0); }
+        #stamina-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); }
+        #breath-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #06b6d4, #67e8f9); }
+        #mosquito-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #ec4899, #f43f5e); }
+
+        /* Collapsible Right Dashboard (Hidden by default!) */
+        #right-panel {
+            position: absolute; top: 54px; right: 12px; width: 255px;
+            display: none; flex-direction: column; gap: 8px; z-index: 18;
+        }
+        .panel-box {
+            background: rgba(8, 12, 24, 0.92); backdrop-filter: blur(12px);
+            padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(255,202,40,0.3);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.85);
+        }
+        .lb-title { font-size: 13px; font-weight: 800; color: #ffca28; margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .lb-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 6px; border-radius: 6px; margin-bottom: 2px; }
+        .lb-row.me { background: rgba(255, 202, 40, 0.22); border: 1px solid rgba(255, 202, 40, 0.45); font-weight: bold; }
+        .lb-pts { color: #4ade80; font-weight: bold; font-family: monospace; }
+        .copy-btn {
+            background: #ffca28; color: #000; border: none; padding: 3px 8px; border-radius: 6px;
+            font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 6px;
+        }
+
+        /* Always-Visible Mini Room Code Pill (Top Right next to Score button) */
+        #mini-room-pill {
+            position: absolute; top: 12px; right: 135px; z-index: 20;
+            background: rgba(16, 185, 129, 0.2); border: 1.5px solid #10b981;
+            color: #a7f3d0; padding: 7px 12px; border-radius: 25px; font-size: 12px;
+            font-weight: bold; display: none; cursor: pointer;
+        }
+
+        /* Collapsible Live Chat & Voice Box */
+        #chat-voice-bar {
+            position: absolute; bottom: 12px; left: 12px; z-index: 22;
+            display: none; gap: 8px; align-items: center;
+        }
+        .cv-btn {
+            background: rgba(10, 16, 32, 0.92); border: 1.5px solid rgba(56, 189, 248, 0.5);
+            color: #38bdf8; padding: 8px 14px; border-radius: 25px; font-size: 12.5px;
+            font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.75);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .cv-btn.mic-on { background: rgba(16, 185, 129, 0.25); border-color: #10b981; color: #4ade80; }
+        #unread-badge {
+            background: #ef4444; color: #fff; font-size: 10px; padding: 1px 6px;
+            border-radius: 10px; display: none;
+        }
+
+        #chat-panel {
+            position: absolute; bottom: 54px; left: 12px; width: 290px;
+            background: rgba(8, 12, 24, 0.94); backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 16px;
+            padding: 12px; z-index: 22; display: none; box-shadow: 0 12px 35px rgba(0,0,0,0.9);
+        }
+        #chat-messages {
+            height: 135px; overflow-y: auto; font-size: 12px; margin-bottom: 8px;
+            display: flex; flex-direction: column; gap: 4px; padding-right: 4px;
+        }
+        .chat-msg { background: rgba(255,255,255,0.06); padding: 5px 8px; border-radius: 8px; word-break: break-word; }
+        .chat-msg b { color: #ffca28; }
+        .emoji-bar { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .emoji-btn { background: #1e293b; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; }
+        .emoji-btn:hover { background: #334155; }
+        .chat-input-row { display: flex; gap: 6px; }
+        #chat-input {
+            flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid #334155;
+            background: #060913; color: #fff; font-size: 12.5px; outline: none; user-select: text; -webkit-user-select: text;
+        }
+        #chat-send {
+            background: #38bdf8; color: #000; border: none; padding: 0 12px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;
+        }
+
+        /* Lobby Overlay */
+        #lobby {
+            position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(14, 25, 45, 0.95), rgba(2, 5, 12, 0.99));
+            display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(10px); padding: 15px;
+        }
+        .lobby-card {
+            background: rgba(10, 16, 30, 0.96); border: 1px solid rgba(255, 202, 40, 0.45);
+            border-radius: 20px; padding: 24px; width: 100%; max-width: 470px; text-align: center;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.95);
+        }
+        .lobby-card h1 { margin: 0; font-size: 25px; color: #ffca28; text-shadow: 0 0 15px rgba(255,202,40,0.4); }
+        .badge-party { background: linear-gradient(135deg, #10b981, #0284c7); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 6px; vertical-align: middle; }
+        .lobby-card p { color: #94a3b8; font-size: 12px; margin: 8px 0 14px 0; line-height: 1.45; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 12px; text-align: left; }
+        .input-group { flex: 1; }
+        .input-group label { display: block; font-size: 11.5px; color: #cbd5e1; margin-bottom: 4px; font-weight: 600; }
+        input, select {
+            width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155;
+            background: #060913; color: #fff; font-size: 14px; outline: none; user-select: text; -webkit-user-select: text;
+        }
+        input:focus, select:focus { border-color: #ffca28; }
+        .btn {
+            width: 100%; padding: 11px; border-radius: 10px; border: none; font-size: 14.5px;
+            font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 6px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #ffca28, #f59e0b); color: #090d16; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45); }
+        .btn-secondary { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; }
+        .btn-secondary:hover { opacity: 0.95; transform: translateY(-1px); }
+        .divider { margin: 14px 0; border-top: 1px solid #1e293b; position: relative; }
+        .divider span { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #0a101e; padding: 0 10px; font-size: 11px; color: #64748b; }
+
+        /* Toast Notification */
+        #toast {
+            position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
+            background: #ffca28; color: #090d16; padding: 9px 22px; border-radius: 30px;
+            font-weight: 800; font-size: 13px; box-shadow: 0 8px 30px rgba(0,0,0,0.85);
+            display: none; z-index: 30; text-align: center; max-width: 90vw;
+        }
+
+        /* PC Controls Hint Footer */
+        #controls-hint {
+            position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(8, 12, 24, 0.88); padding: 6px 14px; border-radius: 20px;
+            font-size: 10.5px; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); z-index: 10; display: none; white-space: nowrap;
+        }
+        kbd { background: #1e293b; padding: 1px 4px; border-radius: 4px; font-size: 9.5px; color: #ffca28; border: 1px solid #475569; }
+
+        /* MOBILE TOUCH CONTROLS */
+        #mobile-controls {
+            position: absolute; inset: 0; pointer-events: none; z-index: 16; display: none;
+        }
+        #joystick-zone {
+            position: absolute; bottom: 58px; left: 20px; width: 110px; height: 110px;
+            background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 202, 40, 0.4);
+            border-radius: 50%; pointer-events: auto; touch-action: none;
+        }
+        #joystick-knob {
+            position: absolute; top: 31px; left: 31px; width: 46px; height: 46px;
+            background: rgba(255, 202, 40, 0.85); border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); pointer-events: none;
+        }
+        #mobile-actions {
+            position: absolute; bottom: 16px; right: 14px; display: grid;
+            grid-template-columns: repeat(4, 54px); gap: 6px; pointer-events: auto;
+        }
+        .m-btn {
+            width: 54px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.22);
+            background: rgba(15, 23, 42, 0.88); color: #fff; font-size: 9.5px; font-weight: bold;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer;
+        }
+        .m-btn:active { background: #ffca28; color: #000; transform: scale(0.95); }
+
+        #end-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 14, 26, 0.98); padding: 30px 38px; border-radius: 20px;
+            text-align: center; border: 2px solid #ffca28; z-index: 60; display: none;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.95); min-width: 340px;
+        }
+
+        @media (max-width: 900px) {
+            #controls-hint { display: none !important; }
+            #mini-room-pill { top: 52px; right: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="vignette"></div>
+<div id="flash-overlay"></div>
+
+<!-- 10-MIN MATCH BANNER -->
+<div id="match-banner">
+    <div id="match-timer">10:00</div>
+    <div id="power-status">🌑 লোডশেডিং চলছে (কারেন্ট আসবে: 90s)</div>
+</div>
+
+<!-- FLOATING TOGGLE BUTTONS (Click to Open/Close Hidden Bars & Dashboard!) -->
+<button class="floating-toggle" id="btn-toggle-hud" onclick="toggleHudPanel()">
+    🔦 <span>বার ও স্ট্যাটাস (Bars)</span> <small id="hud-arrow">▼</small>
+</button>
+
+<div id="mini-room-pill" onclick="copyRoomCode()" title="ক্লিক করে রুম কোড কপি করুন">
+    🌐 কোড: <span id="pill-code">---</span> (<span id="pill-peers">1</span> জন) 📋
+</div>
+
+<button class="floating-toggle" id="btn-toggle-lb" onclick="toggleLbPanel()">
+    🏆 <span>ড্যাশবোর্ড (Score)</span> <small id="lb-arrow">▼</small>
+</button>
+
+<!-- COLLAPSIBLE LEFT HUD (Hidden by default, opens on click!) -->
+<div id="hud">
+    <div class="hud-title">
+        <h2>🌿 আমার স্ট্যাটাস</h2>
+        <span class="role-badge" id="my-role">SEEKER (চোর)</span>
+    </div>
+    <div class="stat-row"><span>আমার পয়েন্ট:</span> <span class="stat-val" id="my-score" style="color:#ffca28;">0 PTS</span></div>
+    <div class="stat-row"><span>বর্তমান চোর (Seeker):</span> <span class="stat-val" id="current-seeker-name" style="color:#f87171;">---</span></div>
+    <div class="stat-row"><span>পটকা (Q) / কাকতাড়ুয়া (B):</span> <span class="stat-val" id="items-left" style="color:#38bdf8;">2 / 2</span></div>
+    <div class="stat-row"><span>চটি জুতো হাতে (X):</span> <span class="stat-val" id="slippers-status" style="color:#4ade80;">প্রস্তুত (Ready)</span></div>
+
+    <div class="bar-label" style="color:#fbbf24;">
+        <span>💡 অটো হিন্ট রাডার (15s Sonar)</span>
+        <span id="hint-sec">15s</span>
+    </div>
+    <div class="progress-bg"><div id="hint-bar"></div></div>
+
+    <div class="bar-label" style="color:#34d399;" id="battery-row">
+        <span>🔦 হ্যালোজেন টর্চ (F = On/Off)</span>
+        <span id="battery-txt">100%</span>
+    </div>
+    <div class="progress-bg" id="battery-bg"><div id="battery-bar"></div></div>
+
+    <div class="bar-label" style="color:#67e8f9;" id="breath-row">
+        <span>🫧 পুকুরে ডুব / দম মিটার (Space)</span>
+        <span id="breath-txt">100%</span>
+    </div>
+    <div class="progress-bg" id="breath-bg"><div id="breath-bar"></div></div>
+
+    <div class="bar-label" style="color:#f43f5e;" id="mosquito-row">
+        <span>🦟 মশার কামড় মিটার (স্থির থাকলে বাড়ে)</span>
+        <span id="mosquito-txt">0%</span>
+    </div>
+    <div class="progress-bg" id="mosquito-bg"><div id="mosquito-bar"></div></div>
+
+    <div class="bar-label" style="color:#38bdf8;">
+        <span>⚡ স্ট্যামিনা (Shift = দৌড়)</span>
+        <span id="stamina-txt">100%</span>
+    </div>
+    <div class="progress-bg"><div id="stamina-bar"></div></div>
+</div>
+
+<!-- COLLAPSIBLE RIGHT DASHBOARD (Hidden by default, opens on click!) -->
+<div id="right-panel">
+    <div class="panel-box" id="room-box" style="display:none; text-align:right;">
+        <div style="font-size:10.5px; color:#94a3b8;">বন্ধুদের এই রুম কোডটি দিন:</div>
+        <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:3px;">
+            <span id="room-code-display" style="font-family:monospace; font-size:20px; color:#ffca28; font-weight:900; letter-spacing:2px;">---</span>
+            <button class="copy-btn" onclick="copyRoomCode()">Copy</button>
+        </div>
+        <div id="peer-count" style="font-size:11.5px; color:#4ade80; margin-top:3px; font-weight:bold;">Online Friends: 1</div>
+    </div>
+
+    <div class="panel-box">
+        <div class="lb-title"><span>🏆 পয়েন্ট ড্যাশবোর্ড</span> <span style="font-size:10px; color:#94a3b8;">10-MIN</span></div>
+        <div id="leaderboard-list"></div>
+        <div style="font-size:10px; color:#94a3b8; margin-top:6px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
+            • ধাপ্পা = <b>+100</b> (চোর বদল!) | • টুক = <b>+150</b>
+        </div>
+    </div>
+</div>
+
+<!-- LIVE CHAT & VOICE CHAT BAR (Bottom Left) -->
+<div id="chat-voice-bar">
+    <button class="cv-btn" onclick="toggleChatPanel()">
+        💬 <span>চ্যাট (Chat)</span> <span id="unread-badge">0</span>
+    </button>
+    <button class="cv-btn" id="btn-voice-mic" onclick="toggleVoiceChat()">
+        🎙️ <span id="mic-label">Mic Off</span>
+    </button>
+</div>
+
+<!-- COLLAPSIBLE CHAT BOX -->
+<div id="chat-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:12.5px; font-weight:bold; color:#38bdf8;">💬 বন্ধুদের লাইভ চ্যাট</span>
+        <button onclick="toggleChatPanel()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px;">✖</button>
+    </div>
+    <div id="chat-messages">
+        <div class="chat-msg" style="color:#94a3b8;">সিস্টেম: চ্যাট বক্সে স্বাগতম! <kbd>Enter</kbd> চেপে মেসেজ পাঠান।</div>
+    </div>
+    <div class="emoji-bar">
+        <button class="emoji-btn" onclick="sendQuickChat('😂 খুঁজে পায় না!')">😂</button>
+        <button class="emoji-btn" onclick="sendQuickChat('🏃‍♂️ টুক দিয়েছি!')">🏃‍♂️</button>
+        <button class="emoji-btn" onclick="sendQuickChat('👻 বাঁশঝাড়ে ভূত!')">👻</button>
+        <button class="emoji-btn" onclick="sendQuickChat('🔦 বাঁচাও! চোর আসছে!')">🔦</button>
+        <button class="emoji-btn" onclick="sendQuickChat('🐕 কুকুরে তাড়া করছে!')">🐕</button>
+    </div>
+    <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="মেসেজ লিখুন..." maxlength="80">
+        <button id="chat-send" onclick="sendChatMessage()">Send</button>
+    </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby">
+    <div class="lobby-card">
+        <h1>🌿 POLANTUK <span class="badge-party">VOICE & CHAT</span></h1>
+        <p>গুগল STUN সার্ভার যুক্ত অনলাইন মাল্টিপ্লেয়ার, ভয়েস চ্যাট, লাইভ চ্যাট বক্স এবং ক্লিন ক্লিক-টু-ওপেন ড্যাশবোর্ড!</p>
+        
+        <div class="input-row">
+            <div class="input-group">
+                <label>আপনার নাম (Your Name)</label>
+                <input type="text" id="player-name" value="Player_" maxlength="12">
+            </div>
+            <div class="input-group">
+                <label>বট সংখ্যা (AI Bots - Host Only)</label>
+                <select id="bot-count-select">
+                    <option value="0">0 Bots (শুধু আসল বন্ধুরা)</option>
+                    <option value="4" selected>4 Smart Bots + বন্ধুরা</option>
+                    <option value="8">8 Smart Bots + বন্ধুরা</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-secondary" id="btn-host" onclick="createOnlineRoom()">🌐 ১. Host Online Room (রুম তৈরি করুন)</button>
+        
+        <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="join-code" placeholder="বন্ধুর কোড দিন (যেমন: 4829)" style="margin:0; text-align:center; font-weight:bold; font-size:15px;">
+            <button class="btn btn-primary" id="btn-join" style="width:155px; margin:0;" onclick="joinOnlineRoom()">🚀 ২. Join Room</button>
+        </div>
+
+        <div class="divider"><span>অথবা অফলাইনে একা প্র্যাকটিস করুন</span></div>
+        <button class="btn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155;" onclick="startOfflineGame()">🎮 Play Offline Solo (vs Bots)</button>
+
+        <div id="net-status" style="font-size:12px; color:#fde047; margin-top:10px; font-weight:bold;"></div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="controls-hint">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> চলা | <kbd>X</kbd> জুতো | <kbd>E</kbd> কলাপাতা | <kbd>Space</kbd> ডুব | <kbd>Q</kbd> পটকা | <kbd>G</kbd> ঢিল | <kbd>B</kbd> পুতুল | <kbd>V</kbd> ভিউ | <kbd>Enter</kbd> চ্যাট
+</div>
+
+<!-- MOBILE TOUCH CONTROLS -->
+<div id="mobile-controls">
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+    <div id="mobile-actions">
+        <button class="m-btn" id="btn-sprint">⚡<span>Sprint</span></button>
+        <button class="m-btn" onclick="activateSlippersInHand()">🩴<span>জুতো (X)</span></button>
+        <button class="m-btn" onclick="toggleBananaDisguise()">🌿<span>কলাপাতা(E)</span></button>
+        <button class="m-btn" id="btn-dive">🫧<span>ডুব (Spc)</span></button>
+        <button class="m-btn" onclick="throwFirecracker()">🧨<span>পটকা (Q)</span></button>
+        <button class="m-btn" onclick="triggerStoneThrow()">🪨<span>ঢিল (G)</span></button>
+        <button class="m-btn" onclick="triggerPlaceDecoy()">🎭<span>পুতুল (B)</span></button>
+        <button class="m-btn" onclick="toggleCameraView()">👁️<span>ভিউ (V)</span></button>
+    </div>
+</div>
+
+<div id="end-modal">
+    <h1 id="end-title" style="color:#ffca28; margin:0 0 8px 0;">🏆 সময় শেষ!</h1>
+    <p id="end-desc" style="color:#e2e8f0; font-size:15px; margin-bottom:14px;"></p>
+    <div id="final-standings" style="background:rgba(0,0,0,0.4); padding:10px; border-radius:12px; margin-bottom:16px; text-align:left;"></div>
+    <button class="btn btn-primary" onclick="location.reload()">আবার খেলুন</button>
+</div>
+
+<!-- Hidden container for remote voice audio streams -->
+<div id="remote-audios" style="display:none;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+    document.getElementById('player-name').value = "Friend_" + Math.floor(10 + Math.random() * 89);
+
+    // =========================================================================
+    // 0. COLLAPSIBLE UI PANELS, LIVE CHAT & VOICE CHAT LOGIC
+    // =========================================================================
+    let hudOpen = false, lbOpen = false, chatOpen = false, unreadCount = 0;
+
+    function toggleHudPanel() {
+        hudOpen = !hudOpen;
+        document.getElementById('hud').style.display = hudOpen ? 'block' : 'none';
+        document.getElementById('hud-arrow').innerText = hudOpen ? '▲' : '▼';
+    }
+
+    function toggleLbPanel() {
+        lbOpen = !lbOpen;
+        document.getElementById('right-panel').style.display = lbOpen ? 'flex' : 'none';
+        document.getElementById('lb-arrow').innerText = lbOpen ? '▲' : '▼';
+    }
+
+    function toggleChatPanel() {
+        chatOpen = !chatOpen;
+        document.getElementById('chat-panel').style.display = chatOpen ? 'block' : 'none';
+        if (chatOpen) {
+            unreadCount = 0;
+            document.getElementById('unread-badge').style.display = 'none';
+            document.getElementById('chat-input').focus();
+        }
+    }
+
+    function appendChatMessage(sender, text) {
+        const box = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = 'chat-msg';
+        div.innerHTML = `<b>${sender}:</b> ${text}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+
+        if (!chatOpen) {
+            unreadCount++;
+            const badge = document.getElementById('unread-badge');
+            badge.innerText = unreadCount;
+            badge.style.display = 'inline-block';
+            showToast(`💬 ${sender}: ${text}`, "#38bdf8");
+        }
+    }
+
+    function sendChatMessage() {
+        const inp = document.getElementById('chat-input');
+        const txt = inp.value.trim();
+        if (!txt) return;
+        inp.value = '';
+        appendChatMessage(myName, txt);
+        sendActionToNetwork({ type: 'chat_msg', sender: myName, text: txt });
+    }
+
+    function sendQuickChat(txt) {
+        appendChatMessage(myName, txt);
+        sendActionToNetwork({ type: 'chat_msg', sender: myName, text: txt });
+    }
+
+    document.getElementById('chat-input').addEventListener('keydown', e => {
+        e.stopPropagation(); // Prevent W/A/S/D movement while typing in chat!
+        if (e.key === 'Enter') sendChatMessage();
+    });
+
+    // WebRTC Microphone Voice Chat
+    let localVoiceStream = null;
+    let micActive = false;
+
+    async function toggleVoiceChat() {
+        const btn = document.getElementById('btn-voice-mic');
+        const lbl = document.getElementById('mic-label');
+
+        if (!localVoiceStream) {
+            try {
+                localVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                micActive = true;
+                btn.classList.add('mic-on');
+                lbl.innerText = "Mic On 🔊";
+                showToast("🎙️ ভয়েস চ্যাট চালু হয়েছে! আপনার বন্ধুরা এখন আপনার কথা শুনতে পাবে!", "#4ade80");
+
+                // Call all connected peers with our microphone stream
+                if (peer) {
+                    allParticipants.forEach(p => {
+                        if (!p.isBot && p.id !== myId) {
+                            const call = peer.call(p.id, localVoiceStream);
+                            if (call) handleIncomingVoiceCall(call);
+                        }
+                    });
+                    if (!isHost && hostRoomPeerId) {
+                        const call = peer.call(hostRoomPeerId, localVoiceStream);
+                        if (call) handleIncomingVoiceCall(call);
+                    }
+                }
+            } catch (err) {
+                showToast("⚠️ মাইক্রোফোন পারমিশন পাওয়া যায়নি! (HTTPS লিংক ব্যবহার করুন)", "#f87171");
+            }
+        } else {
+            micActive = !micActive;
+            localVoiceStream.getAudioTracks().forEach(t => t.enabled = micActive);
+            if (micActive) {
+                btn.classList.add('mic-on');
+                lbl.innerText = "Mic On 🔊";
+                showToast("🎙️ মাইক্রোফোন আনমিউট (Unmute) করা হয়েছে!", "#4ade80");
+            } else {
+                btn.classList.remove('mic-on');
+                lbl.innerText = "Mic Muted 🔇";
+                showToast("🔇 মাইক্রোফোন মিউট (Mute) করা হয়েছে!", "#f59e0b");
+            }
+        }
+    }
+
+    function handleIncomingVoiceCall(call) {
+        call.on('stream', remoteStream => {
+            let audioEl = document.getElementById('voice_' + call.peer);
+            if (!audioEl) {
+                audioEl = document.createElement('audio');
+                audioEl.id = 'voice_' + call.peer;
+                audioEl.autoplay = true;
+                document.getElementById('remote-audios').appendChild(audioEl);
+            }
+            audioEl.srcObject = remoteStream;
+        });
+    }
+
+    function copyRoomCode() {
+        const code = document.getElementById('room-code-display').innerText;
+        navigator.clipboard.writeText(code);
+        showToast("📋 রুম কোড কপি হয়েছে: " + code + " (এখন বন্ধুদের পাঠিয়ে দিন!)", "#4ade80");
+    }
+
+    // =========================================================================
+    // 1. NATURAL AUDIO ENGINE
+    // =========================================================================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function startRainAmbience() {
+        initAudio();
+        const bufferSize = audioCtx.sampleRate * 2;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+        const whiteNoise = audioCtx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer; whiteNoise.loop = true;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass'; filter.frequency.value = 800; filter.Q.value = 0.8;
+        const gain = audioCtx.createGain(); gain.gain.value = 0.032;
+        whiteNoise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+        whiteNoise.start(0);
+    }
+
+    function playNoiseBurst(duration, filterFreq, vol) {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const len = Math.floor(audioCtx.sampleRate * duration);
+        const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.4));
+        const src = audioCtx.createBufferSource(); src.buffer = buf;
+        const flt = audioCtx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = filterFreq;
+        const gain = audioCtx.createGain(); gain.gain.setValueAtTime(vol, now);
+        src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination);
+        src.start(now);
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        if (type === 'tin_clang') playNoiseBurst(0.22, 1400, 0.35);
+        else if (type === 'splash') playNoiseBurst(0.35, 500, 0.35);
+        else if (type === 'cracker') playNoiseBurst(0.45, 2200, 0.65);
+        else if (type === 'dog_bark' || type === 'duck_quack' || type === 'slap_cough') playNoiseBurst(0.2, 750, 0.3);
+        else if (type === 'heartbeat') {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(55, now); osc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
+            gain.gain.setValueAtTime(0.35, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.16);
+        } else if (type === 'dhappa' || type === 'tuk' || type === 'hint' || type === 'power_on') {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(type === 'tuk' ? 440 : 520, now);
+            osc.frequency.setValueAtTime(type === 'tuk' ? 660 : 780, now + 0.1);
+            gain.gain.setValueAtTime(0.18, now); gain.gain.linearRampToValueAtTime(0.005, now + 0.35);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'thunder') playNoiseBurst(2.0, 210, 0.48);
+    }
+
+    // =========================================================================
+    // 2. THREE.JS SCENE & 3,800+ 3D GRASS BLADES
+    // =========================================================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x02050c);
+    scene.fog = new THREE.FogExp2(0x02050c, 0.016);
+
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 180);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    document.body.appendChild(renderer.domElement);
+
+    const hemiLight = new THREE.HemisphereLight(0x1a284d, 0x06100a, 0.25);
+    scene.add(hemiLight);
+
+    const moonLight = new THREE.DirectionalLight(0x647dee, 0.25);
+    moonLight.position.set(55, 90, -55);
+    moonLight.castShadow = true;
+    moonLight.shadow.mapSize.set(2048, 2048);
+    moonLight.shadow.camera.left = -80; moonLight.shadow.camera.right = 80;
+    moonLight.shadow.camera.top = 80; moonLight.shadow.camera.bottom = -80;
+    scene.add(moonLight);
+
+    const groundGeo = new THREE.PlaneGeometry(190, 190, 64, 64);
+    const pos = groundGeo.attributes.position;
+    const colors = [];
+    for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i), vy = pos.getY(i);
+        const dist = Math.hypot(vx, vy);
+        const wave = Math.sin(vx * 0.12) * Math.cos(vy * 0.12) * 0.3;
+        pos.setZ(i, dist > 62 ? wave + Math.sin(dist * 0.08) * 2.5 : wave);
+        if (dist < 9) colors.push(0.12, 0.10, 0.08);
+        else if (Math.hypot(vx + 26, vy + 6) < 15) colors.push(0.06, 0.14, 0.12);
+        else colors.push(0.05, 0.16, 0.08);
+    }
+    groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    groundGeo.computeVertexNormals();
+    const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65, metalness: 0.12, flatShading: true }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+    scene.add(ground);
+
+    const pondPos = { x: -26, z: 6, radius: 12.5 };
+    const pond = new THREE.Mesh(new THREE.CircleGeometry(pondPos.radius, 28), new THREE.MeshStandardMaterial({ color: 0x062138, roughness: 0.08, metalness: 0.88 }));
+    pond.rotation.x = -Math.PI / 2; pond.position.set(pondPos.x, 0.08, pondPos.z);
+    scene.add(pond);
+
+    const grassCount = 3800;
+    const bladeGeo = new THREE.ConeGeometry(0.14, 0.95, 3);
+    bladeGeo.translate(0, 0.45, 0);
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x163d22, roughness: 0.75, flatShading: true });
+    const grassMesh = new THREE.InstancedMesh(bladeGeo, bladeMat, grassCount);
+    grassMesh.receiveShadow = true;
+
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < grassCount; i++) {
+        let gx = (Math.sin(i * 12.9898) * 43758.5453 % 1) * 140 - 70;
+        let gz = (Math.cos(i * 78.233) * 23421.631 % 1) * 140 - 70;
+        if (Math.hypot(gx, gz) < 4.5) gx += 8;
+        if (Math.hypot(gx - pondPos.x, gz - pondPos.z) < pondPos.radius - 0.8) gx += 18;
+        const scaleY = 0.75 + (i % 5) * 0.22;
+        dummy.position.set(gx, 0, gz);
+        dummy.rotation.set(0, (i % 6), 0);
+        dummy.scale.set(1, scaleY, 1);
+        dummy.updateMatrix();
+        grassMesh.setMatrixAt(i, dummy.matrix);
+    }
+    scene.add(grassMesh);
+
+    // =========================================================================
+    // 3. VILLAGE PROPS
+    // =========================================================================
+    const obstacles = [];
+    const concealBushes = [];
+    const houseRoofs = [];
+    const electricityLights = [];
+    const animals = [];
+
+    const poleGroup = new THREE.Group();
+    const poleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 10.5, 8), new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.6, flatShading: true }));
+    poleMesh.position.y = 5.25; poleMesh.castShadow = true; poleGroup.add(poleMesh);
+
+    const tukRing = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.0, 28), new THREE.MeshBasicMaterial({ color: 0xffca28, side: THREE.DoubleSide, transparent: true, opacity: 0.82 }));
+    tukRing.rotation.x = -Math.PI / 2; tukRing.position.y = 0.14; poleGroup.add(tukRing);
+
+    const poleLight = new THREE.PointLight(0xffb703, 0.85, 11);
+    poleLight.position.set(0, 4.8, 0); poleGroup.add(poleLight);
+    scene.add(poleGroup);
+    obstacles.push({ x: 0, z: 0, radius: 0.95 });
+
+    const matTinWall = new THREE.MeshStandardMaterial({ color: 0x453026, roughness: 0.78, flatShading: true });
+    const matRoof = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.45, metalness: 0.45, flatShading: true });
+    const matBrick = new THREE.MeshStandardMaterial({ color: 0x5c2c22, roughness: 0.85, flatShading: true });
+    const matHay = new THREE.MeshStandardMaterial({ color: 0x94792d, roughness: 0.85, flatShading: true });
+    const matFoliage = new THREE.MeshStandardMaterial({ color: 0x133820, roughness: 0.65, flatShading: true });
+    const matBanana = new THREE.MeshStandardMaterial({ color: 0x225730, roughness: 0.52, flatShading: true });
+    const matBamboo = new THREE.MeshStandardMaterial({ color: 0x294a26, roughness: 0.6, flatShading: true });
+    const matWood = new THREE.MeshStandardMaterial({ color: 0x3d261c, roughness: 0.85, flatShading: true });
+
+    function addVillageHouse(x, z, rotY) {
+        const g = new THREE.Group();
+        const walls = new THREE.Mesh(new THREE.BoxGeometry(8.2, 4.2, 6.0), matTinWall);
+        walls.position.y = 2.1; walls.castShadow = true; walls.receiveShadow = true; g.add(walls);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(6.6, 2.8, 4), matRoof);
+        roof.position.y = 5.6; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+        const shed = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.8, 3.0), matTinWall);
+        shed.position.set(-2.3, 1.4, -4.2); shed.castShadow = true; g.add(shed);
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95), new THREE.MeshBasicMaterial({ color: 0xffa000 }));
+        win.position.set(1.8, 2.2, 3.02); g.add(win);
+        const bulbLight = new THREE.PointLight(0xfffbeb, 0, 28);
+        bulbLight.position.set(0, 3.8, 4.2); g.add(bulbLight);
+        electricityLights.push(bulbLight);
+        g.position.set(x, 0, z); g.rotation.y = rotY;
+        scene.add(g);
+        obstacles.push({ x, z, radius: 5.2 });
+        houseRoofs.push({ x, z });
+    }
+
+    function addGuardDog(x, z) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 1.05), new THREE.MeshStandardMaterial({ color: 0x8d5524, flatShading: true }));
+        body.position.y = 0.45; body.castShadow = true; g.add(body);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.45), new THREE.MeshStandardMaterial({ color: 0x5c3818, flatShading: true }));
+        head.position.set(0, 0.78, 0.55); g.add(head);
+        g.position.set(x, 0, z); scene.add(g);
+        animals.push({ type: 'dog', mesh: g, x, z, triggerRadius: 5.0, cooldown: 0 });
+    }
+
+    function addDuckFlock(x, z) {
+        const g = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+            const duck = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32, 0), new THREE.MeshStandardMaterial({ color: 0xf8fafc, flatShading: true }));
+            duck.position.set((i - 1) * 0.7, 0.3, 0); duck.castShadow = true; g.add(duck);
+        }
+        g.position.set(x, 0, z); scene.add(g);
+        animals.push({ type: 'duck', mesh: g, x, z, triggerRadius: 4.5, cooldown: 0 });
+    }
+
+    function addBambooMacha(x, z, rotY = 0) {
+        const g = new THREE.Group();
+        const platform = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 3.2), matWood);
+        platform.position.y = 1.4; platform.castShadow = true; g.add(platform);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.5, 4), matHay);
+        roof.position.y = 3.6; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+        [[-1.8, -1.3], [1.8, -1.3], [-1.8, 1.3], [1.8, 1.3]].forEach(([px, pz]) => {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.0, 6), matBamboo);
+            post.position.set(px, 1.5, pz); g.add(post);
+        });
+        g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g);
+        concealBushes.push({ x, z, radius: 2.4 });
+    }
+
+    function addBananaGrove(x, z) {
+        const g = new THREE.Group();
+        [[-0.8, -0.8], [0.8, 0.8], [-0.8, 0.8], [0.8, -0.8]].forEach(([bx, bz]) => {
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 2.8, 6), matBanana);
+            stem.position.set(bx, 1.4, bz); stem.castShadow = true; g.add(stem);
+            for (let l = 0; l < 4; l++) {
+                const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 2.3), matBanana);
+                leaf.position.set(bx, 2.7, bz); leaf.rotation.y = (l * Math.PI) / 2; leaf.rotation.x = 0.35;
+                leaf.castShadow = true; g.add(leaf);
+            }
+        });
+        g.position.set(x, 0, z); scene.add(g);
+        concealBushes.push({ x, z, radius: 2.6 });
+    }
+
+    function addBambooGrove(x, z) {
+        const g = new THREE.Group();
+        for (let i = 0; i < 10; i++) {
+            const ang = (i / 10) * Math.PI * 2;
+            const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 8.5, 5), matBamboo);
+            stalk.position.set(Math.cos(ang) * 1.1, 4.25, Math.sin(ang) * 1.1); stalk.castShadow = true; g.add(stalk);
+        }
+        const top = new THREE.Mesh(new THREE.DodecahedronGeometry(3.3, 1), matFoliage);
+        top.position.y = 7.5; top.castShadow = true; g.add(top);
+        g.position.set(x, 0, z); scene.add(g);
+        obstacles.push({ x, z, radius: 2.2 });
+        concealBushes.push({ x, z, radius: 3.5 });
+    }
+
+    function addHidingBush(x, z, scale = 1.15) {
+        const g = new THREE.Group();
+        [[-0.4, 0], [0.4, 0.3], [0, -0.4]].forEach(([bx, bz]) => {
+            const b = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4 * scale, 1), matFoliage);
+            b.position.set(bx, 0.95 * scale, bz); b.castShadow = true; b.receiveShadow = true; g.add(b);
+        });
+        g.position.set(x, 0, z); scene.add(g);
+        concealBushes.push({ x, z, radius: 2.3 * scale });
+    }
+
+    function addBrickWall(x, z, rotY) {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(5.8, 2.8, 0.85), matBrick);
+        wall.position.set(x, 1.4, z); wall.rotation.y = rotY; wall.castShadow = true;
+        scene.add(wall); obstacles.push({ x, z, radius: 2.7 });
+    }
+
+    function addHaystack(x, z) {
+        const g = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 2.0, 8), matHay); base.position.y = 1.0; base.castShadow = true;
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(2.6, 3.1, 8), matHay); cone.position.y = 3.5; cone.castShadow = true;
+        g.add(base, cone); g.position.set(x, 0, z); scene.add(g);
+        obstacles.push({ x, z, radius: 2.5 });
+    }
+
+    function addTree(x, z, s = 1.1) {
+        const g = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * s, 0.65 * s, 3.2 * s, 6), matWood); trunk.position.y = 1.6 * s; trunk.castShadow = true;
+        const c1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.7 * s, 1), matFoliage); c1.position.y = 4.3 * s; c1.castShadow = true;
+        g.add(trunk, c1); g.position.set(x, 0, z); scene.add(g);
+        obstacles.push({ x, z, radius: 1.7 * s });
+    }
+
+    [[-24, -22, 0.3], [25, -22, -0.4], [-26, 26, 0.85], [26, 24, -2.2], [0, -38, 0], [-44, -6, 1.4], [44, 6, -1.5], [0, 44, 3.14]].forEach(([x, z, r]) => addVillageHouse(x, z, r));
+    [[-14, 4, 0.2], [18, -18, -0.5], [-20, -34, 0.8], [22, 34, -0.4], [-36, 18, 1.1]].forEach(([x, z, r]) => addBambooMacha(x, z, r));
+    [[-16, 16], [16, -26], [-32, -2], [32, 12], [-8, 34], [12, -36], [-38, -22], [38, -20]].forEach(([x, z]) => addBananaGrove(x, z));
+    [[-12, -20], [16, -12], [14, 16], [-10, 20], [32, -8], [-34, 14], [4, 34], [-26, -38], [28, -36]].forEach(([x, z]) => addHaystack(x, z));
+    [[-9, -7, 0.4], [11, -6, -0.5], [-8, 10, -0.3], [10, 9, 0.6], [0, -18, 0], [20, 4, 1.5], [-18, -14, 0.9], [0, 20, -0.2]].forEach(([x, z, r]) => addBrickWall(x, z, r));
+    [[-18, -32], [20, -34], [-36, -18], [36, -18], [-34, 32], [32, 34], [-14, 38], [16, 36], [-46, 22], [46, -22]].forEach(([x, z]) => addBambooGrove(x, z));
+    [
+        [-6, -13], [7, -14], [-15, -3], [15, -2], [-6, 15], [8, 15], [-22, -10], [22, -11], [-19, 17], [19, 19],
+        [0, 25], [-28, 20], [28, 15], [-30, -26], [30, -26], [-12, -30], [12, -28], [26, 30], [-24, 36], [38, -4],
+        [-38, 8], [2, -27], [-42, -32], [42, 32], [-14, -44], [14, 44]
+    ].forEach(([x, z]) => addHidingBush(x, z, 1.15));
+    [[-10, -11], [12, -11], [19, 7], [-14, 13], [5, -23], [-32, -9], [33, -13], [-31, 18], [31, 18], [-17, -29], [17, -29]].forEach(([x, z]) => addTree(x, z, 1.1));
+    [[-17, -16], [19, -15], [19, 18], [-18, 21], [-3, -30]].forEach(([x, z]) => addGuardDog(x, z));
+    [[-14, 6], [-26, -6], [-26, 18], [-38, 6]].forEach(([x, z]) => addDuckFlock(x, z));
+
+    // =========================================================================
+    // 4. RAIN, FOOTPRINTS & DISTRACTIONS
+    // =========================================================================
+    const rainCount = 1100;
+    const rainGeo = new THREE.BufferGeometry();
+    const rainPositions = new Float32Array(rainCount * 6);
+    for (let i = 0; i < rainCount; i++) {
+        const rx = (Math.random() - 0.5) * 110, ry = Math.random() * 45, rz = (Math.random() - 0.5) * 110;
+        rainPositions[i * 6] = rx; rainPositions[i * 6 + 1] = ry; rainPositions[i * 6 + 2] = rz;
+        rainPositions[i * 6 + 3] = rx - 0.15; rainPositions[i * 6 + 4] = ry - 1.3; rainPositions[i * 6 + 5] = rz;
+    }
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+    const rainSystem = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0x90caf9, transparent: true, opacity: 0.35 }));
+    scene.add(rainSystem);
+
+    const footprints = [];
+    const fpGeo = new THREE.CircleGeometry(0.26, 8); fpGeo.rotateX(-Math.PI / 2);
+    function spawnFootprint(x, z, isSeekerFoot = false) {
+        const mesh = new THREE.Mesh(fpGeo, new THREE.MeshBasicMaterial({ color: isSeekerFoot ? 0x38bdf8 : 0xfacc15, transparent: true, opacity: 0.48 }));
+        mesh.position.set(x + (Math.random() - 0.5) * 0.3, 0.08, z + (Math.random() - 0.5) * 0.3);
+        scene.add(mesh);
+        footprints.push({ mesh, created: Date.now() });
+    }
+
+    const soundRipples = [];
+    let latestNoiseTarget = null;
+
+    function createSoundRipple(x, z, color = 0xef4444) {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.4, 24), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.95 }));
+        ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.2, z);
+        scene.add(ring);
+        soundRipples.push({ mesh: ring, created: Date.now() });
+        latestNoiseTarget = { x, z, expires: Date.now() + 6500 };
+    }
+
+    let lastStoneTime = 0;
+    function triggerStoneThrow(fromEntity = myMesh) {
+        if (!gameRunning || gameOver || !fromEntity) return;
+        if (fromEntity === myMesh && Date.now() - lastStoneTime < 4500) {
+            return showToast("⏳ পরবর্তী ঢিল ছুড়তে ৪ সেকেন্ড অপেক্ষা করুন!", "#f59e0b");
+        }
+        if (fromEntity === myMesh) lastStoneTime = Date.now();
+
+        const angle = fromEntity.rotation.y;
+        const tx = fromEntity.position.x + Math.sin(angle) * 18;
+        const tz = fromEntity.position.z + Math.cos(angle) * 18;
+
+        if (Math.hypot(tx - pondPos.x, tz - pondPos.z) < pondPos.radius) {
+            playSound('splash');
+            createSoundRipple(tx, tz, 0x38bdf8);
+            sendActionToNetwork({ type: 'ripple', x: tx, z: tz, col: 0x38bdf8, snd: 'splash', msg: `💦 ঝপাং! পুকুরের পানিতে ঢিল পড়েছে!` });
+            showToast(`💦 ঝপাং! পুকুরের পানিতে ঢিল পড়েছে!`, "#38bdf8");
+        } else {
+            let roof = houseRoofs[0], minDist = 999;
+            houseRoofs.forEach(r => { const d = Math.hypot(tx - r.x, tz - r.z); if (d < minDist) { minDist = d; roof = r; } });
+            const hitX = minDist < 22 ? roof.x : tx, hitZ = minDist < 22 ? roof.z : tz;
+            playSound('tin_clang');
+            createSoundRipple(hitX, hitZ, 0xffca28);
+            sendActionToNetwork({ type: 'ripple', x: hitX, z: hitZ, col: 0xffca28, snd: 'tin_clang', msg: `🪨 ঠাস! টিনের চালে ঢিল পড়েছে!` });
+            showToast(`🪨 ঠাস! টিনের চালে ঢিল পড়েছে!`, "#ffca28");
+        }
+    }
+
+    let myCrackersLeft = 2, seekerBlindUntil = 0;
+    function throwFirecracker() {
+        if (!gameRunning || gameOver || !myMesh) return;
+        if (myMesh.userData.isSeeker) return showToast("⚠️ চোর পটকা ফাটাতে পারে না!", "#f87171");
+        if (myCrackersLeft <= 0) return showToast("⚠️ আপনার সব পটকা শেষ!", "#f87171");
+        myCrackersLeft--;
+        document.getElementById('items-left').innerText = `${myCrackersLeft} / ${myDecoysLeft}`;
+        playSound('cracker');
+        createSoundRipple(myMesh.position.x, myMesh.position.z, 0xfef08a);
+        sendActionToNetwork({ type: 'cracker', x: myMesh.position.x, z: myMesh.position.z, by: myName });
+
+        const fl = document.getElementById('flash-overlay');
+        fl.style.opacity = '0.85'; setTimeout(() => fl.style.opacity = '0', 300);
+        if (currentSeekerEntity && currentSeekerEntity.mesh.position.distanceTo(myMesh.position) < 20) {
+            seekerBlindUntil = Date.now() + 3500;
+            showToast("🧨 ঠাস!! কালীপটকার ধোঁয়ায় চোর ৩.৫ সেকেন্ডের জন্য অন্ধ হয়ে গেছে!", "#fde047");
+        }
+    }
+
+    const activeDecoys = [];
+    let myDecoysLeft = 2;
+    function triggerPlaceDecoy() {
+        if (!gameRunning || gameOver || !myMesh) return;
+        if (myMesh.userData.isSeeker) return showToast("⚠️ চোর কাকতাড়ুয়া বসাতে পারে না!", "#f87171");
+        if (myDecoysLeft <= 0) return showToast("⚠️ আপনার সব কাকতাড়ুয়া শেষ!", "#f87171");
+        myDecoysLeft--;
+        document.getElementById('items-left').innerText = `${myCrackersLeft} / ${myDecoysLeft}`;
+        spawnDecoyAt(myMesh.position.x, myMesh.position.z, myName);
+        sendActionToNetwork({ type: 'decoy', x: myMesh.position.x, z: myMesh.position.z, owner: myName });
+        showToast("🎭 ভুয়া কাকতাড়ুয়া বসিয়েছেন!", "#a855f7");
+    }
+
+    function spawnDecoyAt(x, z, ownerName) {
+        const dMesh = createPlayerCharacter(0x3b2f2f, "কাকতাড়ুয়া", false);
+        dMesh.userData.nameSprite.visible = false;
+        dMesh.position.set(x, 0, z);
+        scene.add(dMesh);
+        activeDecoys.push({ mesh: dMesh, owner: ownerName, active: true });
+    }
+
+    // =========================================================================
+    // 5. CHARACTER BUILDER & GRUMPY UNCLE
+    // =========================================================================
+    function createNameSprite(text, color = "#ffffff") {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = "rgba(4, 7, 17, 0.85)";
+        ctx.roundRect(16, 12, 224, 40, 20);
+        ctx.fill();
+        ctx.font = "bold 21px Segoe UI";
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(text, 128, 39);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+        sprite.scale.set(3.1, 0.78, 1); sprite.position.y = 3.1;
+        return sprite;
+    }
+
+    function createPlayerCharacter(shirtColor, nameText, isSeeker = false) {
+        const root = new THREE.Group();
+        const torsoMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.75, flatShading: true });
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.12, 0.52), torsoMat);
+        torso.position.y = 1.2; torso.castShadow = true; torso.receiveShadow = true; root.add(torso);
+
+        const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0xd2996c, roughness: 0.7, flatShading: true }));
+        head.position.y = 2.05; head.castShadow = true; root.add(head);
+
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, flatShading: true });
+        const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.72, 0.36), legMat); leftLeg.position.set(-0.22, 0.36, 0); leftLeg.castShadow = true;
+        const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.72, 0.36), legMat); rightLeg.position.set(0.22, 0.36, 0); rightLeg.castShadow = true;
+        root.add(leftLeg, rightLeg);
+
+        const bananaCamo = new THREE.Group();
+        for (let i = 0; i < 4; i++) {
+            const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 2.3), matBanana);
+            leaf.position.y = 1.65; leaf.rotation.y = (i * Math.PI) / 2; leaf.rotation.x = 0.45;
+            bananaCamo.add(leaf);
+        }
+        bananaCamo.visible = false; root.add(bananaCamo);
+
+        const nameSprite = createNameSprite(nameText, "#38bdf8");
+        nameSprite.visible = false; root.add(nameSprite);
+
+        const spotLight = new THREE.SpotLight(0xfffbeb, 12.5, 55, Math.PI / 3.2, 0.36, 1.05);
+        spotLight.position.set(0, 1.55, 0); spotLight.castShadow = true; spotLight.shadow.mapSize.set(1024, 1024);
+        spotLight.visible = isSeeker; root.add(spotLight);
+
+        const target = new THREE.Object3D(); target.position.set(0, 0.5, 18); root.add(target); spotLight.target = target;
+
+        const coneGeo = new THREE.ConeGeometry(7.5, 25, 24, 1, true);
+        coneGeo.translate(0, -12.5, 0); coneGeo.rotateX(-Math.PI / 2);
+        const beamCone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
+            color: 0xfffbeb, transparent: true, opacity: 0.11, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+        }));
+        beamCone.position.set(0, 1.45, 0.3); beamCone.visible = isSeeker; root.add(beamCone);
+
+        const selfGlow = new THREE.PointLight(0xfffbeb, 0.75, 8.5);
+        selfGlow.position.set(0, 2.2, 0); selfGlow.visible = isSeeker; root.add(selfGlow);
+
+        const sonarRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.45, 24), new THREE.MeshBasicMaterial({ color: 0xffea00, side: THREE.DoubleSide, transparent: true, opacity: 0.95 }));
+        sonarRing.rotation.x = -Math.PI / 2; sonarRing.position.y = 0.15; sonarRing.visible = false; root.add(sonarRing);
+
+        const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 1.15, 24, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffea00, wireframe: true, transparent: true, opacity: 0.85 }));
+        beacon.position.y = 12; beacon.visible = false; root.add(beacon);
+
+        root.userData = {
+            name: nameText, torso, torsoMat, head, leftLeg, rightLeg, bananaCamo, nameSprite,
+            spotLight, beamCone, selfGlow, sonarRing, beacon,
+            walkCycle: 0, stepTimer: 0, crouched: false, bananaDisguise: false, diving: false, torchOn: true, isSeeker: isSeeker
+        };
+        return root;
+    }
+
+    const uncleMesh = createPlayerCharacter(0x9a3412, "রাগী চাচা (NPC)", false);
+    uncleMesh.userData.nameSprite.visible = true;
+    const uncleLantern = new THREE.PointLight(0xff6d00, 2.2, 14);
+    uncleLantern.position.set(0.6, 1.5, 0.6); uncleMesh.add(uncleLantern);
+    uncleMesh.position.set(22, 0, -10); scene.add(uncleMesh);
+    let uncleTarget = { x: -20, z: -20 };
+
+    // =========================================================================
+    // 6. GAME STATE & ROBUST STUN SERVER PEERJS NETWORKING
+    // =========================================================================
+    const ROOM_PREFIX = "POLANTUK-BD-2026-"; // Unique prefix prevents global ID collisions!
+    const PEER_CONFIG = {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' }
+            ]
+        }
+    };
+
+    let myId = "local_" + Math.floor(Math.random() * 99999);
+    let myName = "Player";
+    let isHost = true;
+    let hostRoomPeerId = "";
+    let myMesh = null;
+    let currentSeekerEntity = null;
+    let allParticipants = [];
+    const scores = {};
+
+    let gameRunning = false, gameOver = false;
+    let isFirstPerson = false, electricityOn = false;
+
+    let stamina = 100, battery = 100, breath = 100, mosquitoMeter = 0;
+    let slipStunUntil = 0, roleSwapImmunityUntil = 0;
+    let slippersActiveUntil = 0, slippersCooldownUntil = 0;
+    let lastHeartbeatTime = 0;
+
+    let matchSecondsLeft = 600, powerCycleTimer = 90;
+    const HINT_INTERVAL = 15;
+    let hintTimer = HINT_INTERVAL, hintPulseDuration = 0, nextLightningTime = 16;
+
+    let peer = null, connections = [], hostConn = null;
+    const camoColors = [0x1b263b, 0x1e2f23, 0x2b1d28, 0x2d231e, 0x1a2e35, 0x242424, 0x2c1b18, 0x16241c];
+    const botNames = ["রহিম (Bot)", "করিম (Bot)", "সাকিব (Bot)", "রিয়াদ (Bot)", "নাবিল (Bot)", "তানভীর (Bot)", "হাসান (Bot)", "সোহেল (Bot)"];
+
+    function activateSlippersInHand() {
+        if (!gameRunning || gameOver || !myMesh) return;
+        const now = Date.now();
+        if (now < slippersCooldownUntil) return showToast(`⏳ জুতো হাতে নেওয়ার কুলডাউন চলছে!`, "#f59e0b");
+        slippersActiveUntil = now + 10000;
+        slippersCooldownUntil = now + 25000;
+        showToast("🩴 চটি জুতো হাতে নিয়েছেন! ১০ সেকেন্ড নিঃশব্দে ও ২৫% দ্রুত দৌড়াবেন!", "#4ade80");
+    }
+
+    function toggleBananaDisguise() {
+        if (!gameRunning || gameOver || !myMesh || myMesh.userData.isSeeker) return;
+        const ud = myMesh.userData;
+        ud.bananaDisguise = !ud.bananaDisguise;
+        ud.bananaCamo.visible = ud.bananaDisguise;
+        setCrouchState(myMesh, ud.bananaDisguise);
+        showToast(ud.bananaDisguise ? "🌿 মাথার ওপর কলাপাতা ধরেছেন!" : "🌿 কলাপাতা নামিয়েছেন!", "#4ade80");
+    }
+
+    let lastTauntTime = 0;
+    function triggerDeshiTaunt(num) {
+        if (!gameRunning || gameOver || !myMesh || myMesh.userData.isSeeker) return;
+        if (Date.now() - lastTauntTime < 8000) return showToast("⏳ ভেঙচি দিতে একটু অপেক্ষা করুন!", "#f59e0b");
+        lastTauntTime = Date.now();
+        addScore(myName, 20);
+        createSoundRipple(myMesh.position.x, myMesh.position.z, 0xffca28);
+        const msg = num === 1 ? `😜 "${myName}: কুক্কুরুক্কু! চোর তো খুঁজেই পায় না!" (+20 PTS)` : `👻 "${myName}: হি-হি-হি! বাঁশঝাড়ে ভূত!" (+20 PTS)`;
+        sendActionToNetwork({ type: 'ripple', x: myMesh.position.x, z: myMesh.position.z, col: 0xffca28, snd: 'hint', msg });
+        showToast(msg, "#ffca28");
+    }
+
+    function setEntityAsSeeker(newSeekerObj) {
+        if (!newSeekerObj) return;
+        allParticipants.forEach(p => {
+            const isNowSeeker = (p.id === newSeekerObj.id);
+            p.isSeeker = isNowSeeker;
+            const ud = p.mesh.userData;
+            ud.isSeeker = isNowSeeker;
+            ud.torchOn = true;
+            ud.spotLight.visible = isNowSeeker;
+            ud.beamCone.visible = isNowSeeker;
+            ud.selfGlow.visible = isNowSeeker;
+            ud.bananaDisguise = false;
+            ud.bananaCamo.visible = false;
+            ud.torsoMat.color.setHex(isNowSeeker ? 0xdc2626 : p.baseColor);
+            if (isNowSeeker) setCrouchState(p.mesh, false);
+        });
+
+        currentSeekerEntity = newSeekerObj;
+        roleSwapImmunityUntil = Date.now() + 3500;
+        document.getElementById('current-seeker-name').innerText = newSeekerObj.name;
+
+        const iAmSeeker = (newSeekerObj.id === myId);
+        document.getElementById('my-role').innerText = iAmSeeker ? "SEEKER (চোর)" : "HIDER (পলানো)";
+        document.getElementById('my-role').style.background = iAmSeeker ? "#dc2626" : "#0284c7";
+        document.getElementById('battery-row').style.display = iAmSeeker ? 'flex' : 'none';
+        document.getElementById('battery-bg').style.display = iAmSeeker ? 'block' : 'none';
+        renderLeaderboard();
+    }
+
+    function addScore(name, pts) {
+        scores[name] = Math.max(0, (scores[name] || 0) + pts);
+        if (name === myName) document.getElementById('my-score').innerText = scores[myName] + " PTS";
+        renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+        const listEl = document.getElementById('leaderboard-list');
+        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        listEl.innerHTML = sorted.map(([n, p], idx) => `
+            <div class="lb-row ${n === myName ? 'me' : ''}">
+                <span>#${idx + 1} ${n} ${currentSeekerEntity && currentSeekerEntity.name === n ? '🔦' : ''}</span>
+                <span class="lb-pts">${p} PTS</span>
+            </div>
+        `).join('');
+    }
+
+    function teleportToRandomCover(mesh) {
+        const spot = concealBushes[Math.floor(Math.random() * concealBushes.length)];
+        const ang = Math.random() * Math.PI * 2;
+        mesh.position.set(spot.x + Math.cos(ang) * 0.8, 0, spot.z + Math.sin(ang) * 0.8);
+    }
+
+    function spawnWorldEntities(hostMode = true) {
+        myName = document.getElementById('player-name').value.trim() || "Player";
+        isHost = hostMode;
+        scores[myName] = 0;
+
+        myMesh = createPlayerCharacter(0x1e2f23, myName, false);
+        myMesh.position.set(0, 0, 6.5);
+        scene.add(myMesh);
+
+        const meObj = { id: myId, isBot: false, name: myName, mesh: myMesh, baseColor: 0x0284c7, isSeeker: false, speed: 0.165 };
+        allParticipants.push(meObj);
+
+        if (isHost) {
+            const botCount = parseInt(document.getElementById('bot-count-select').value, 10);
+            for (let i = 0; i < botCount; i++) {
+                const bName = botNames[i];
+                scores[bName] = 0;
+                const col = camoColors[i % camoColors.length];
+                const bMesh = createPlayerCharacter(col, bName, false);
+                teleportToRandomCover(bMesh);
+                scene.add(bMesh);
+
+                const botObj = {
+                    id: 'bot_' + i, isBot: true, name: bName, mesh: bMesh, baseColor: col,
+                    isSeeker: false, sneaking: false, speed: 0.078 + Math.random() * 0.02,
+                    patrolTarget: { x: 0, z: 0 }
+                };
+                allParticipants.push(botObj);
+            }
+            setEntityAsSeeker(meObj);
+        } else {
+            teleportToRandomCover(myMesh);
+        }
+        renderLeaderboard();
+    }
+
+    function setCrouchState(mesh, crouch) {
+        const ud = mesh.userData;
+        ud.crouched = crouch;
+        ud.torso.position.y = crouch ? 0.72 : 1.2;
+        ud.head.position.y = crouch ? 1.42 : 2.05;
+        ud.leftLeg.scale.y = crouch ? 0.5 : 1;
+        ud.rightLeg.scale.y = crouch ? 0.5 : 1;
+    }
+
+    // =========================================================================
+    // 7. ACTIVATING CLEAN UI & ROBUST ONLINE CONNECTION
+    // =========================================================================
+    function activateGameUI() {
+        document.getElementById('lobby').style.display = 'none';
+        // Notice: #hud and #right-panel stay HIDDEN until user clicks their toggle buttons!
+        document.getElementById('btn-toggle-hud').style.display = 'flex';
+        document.getElementById('btn-toggle-lb').style.display = 'flex';
+        document.getElementById('chat-voice-bar').style.display = 'flex';
+        document.getElementById('match-banner').style.display = 'block';
+        document.getElementById('controls-hint').style.display = 'block';
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 900) {
+            document.getElementById('mobile-controls').style.display = 'block';
+        }
+        startRainAmbience();
+    }
+
+    function startOfflineGame() {
+        activateGameUI();
+        spawnWorldEntities(true);
+        gameRunning = true;
+        showToast("🌿 খেলা শুরু! উপরের বাটনে ক্লিক করে বার ও স্কোরবোর্ড দেখতে পারবেন!", "#ffca28");
+    }
+
+    function createOnlineRoom() {
+        const statusEl = document.getElementById('net-status');
+        statusEl.innerText = "⏳ ক্লাউড সার্ভারের সাথে রুম কানেক্ট হচ্ছে...";
+        const shortDigits = String(Math.floor(1000 + Math.random() * 9000));
+        const fullPeerId = ROOM_PREFIX + shortDigits;
+        myId = fullPeerId;
+
+        peer = new Peer(fullPeerId, PEER_CONFIG);
+
+        peer.on('open', () => {
+            activateGameUI();
+            document.getElementById('room-box').style.display = 'block';
+            document.getElementById('mini-room-pill').style.display = 'block';
+            document.getElementById('room-code-display').innerText = shortDigits;
+            document.getElementById('pill-code').innerText = shortDigits;
+            spawnWorldEntities(true);
+            gameRunning = true;
+            showToast(`🌐 রুম তৈরি হয়েছে! বন্ধুদের শুধু "${shortDigits}" কোডটি দিন!`, "#4ade80");
+        });
+
+        peer.on('error', err => {
+            statusEl.innerText = "⚠️ নেটওয়ার্ক এরর: " + err.type + " (আবার চেষ্টা করুন)";
+        });
+
+        peer.on('call', call => {
+            call.answer(localVoiceStream || undefined);
+            handleIncomingVoiceCall(call);
+        });
+
+        peer.on('connection', conn => {
+            conn.on('open', () => {
+                connections.push(conn);
+                const count = connections.length + 1;
+                document.getElementById('peer-count').innerText = "Online Friends: " + count;
+                document.getElementById('pill-peers').innerText = count;
+            });
+            conn.on('data', d => handleHostIncomingData(d, conn));
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                const count = connections.length + 1;
+                document.getElementById('peer-count').innerText = "Online Friends: " + count;
+                document.getElementById('pill-peers').innerText = count;
+            });
+        });
+    }
+
+    function joinOnlineRoom() {
+        let codeInput = document.getElementById('join-code').value.trim().replace(/\D/g, '');
+        if (!codeInput) return alert("বন্ধুর দেওয়া ৪ সংখ্যার রুম কোডটি লিখুন!");
+        const targetPeerId = ROOM_PREFIX + codeInput;
+        hostRoomPeerId = targetPeerId;
+
+        const statusEl = document.getElementById('net-status');
+        statusEl.innerText = `⏳ রুম "${codeInput}"-এ কানেক্ট করা হচ্ছে...`;
+
+        peer = new Peer(undefined, PEER_CONFIG);
+
+        peer.on('open', id => {
+            myId = id;
+            hostConn = peer.connect(targetPeerId, { reliable: true });
+
+            const timeout = setTimeout(() => {
+                if (!gameRunning) {
+                    statusEl.innerText = "❌ রুম পাওয়া যায়নি! কোডটি ঠিক আছে কিনা দেখুন অথবা হোস্টকে আবার রুম খুলতে বলুন।";
+                }
+            }, 9000);
+
+            hostConn.on('open', () => {
+                clearTimeout(timeout);
+                activateGameUI();
+                document.getElementById('room-box').style.display = 'block';
+                document.getElementById('mini-room-pill').style.display = 'block';
+                document.getElementById('room-code-display').innerText = codeInput;
+                document.getElementById('pill-code').innerText = codeInput;
+                spawnWorldEntities(false);
+                gameRunning = true;
+
+                hostConn.send({
+                    type: 'join_hello', id: myId, name: myName,
+                    x: myMesh.position.x, z: myMesh.position.z
+                });
+                showToast("🎉 বন্ধুর রুমে সফলভাবে ঢুকেছেন! নিচে চ্যাট ও মাইক বাটন দিয়ে কথা বলুন!", "#4ade80");
+                hostConn.on('data', d => handleClientIncomingData(d));
+            });
+
+            hostConn.on('error', () => {
+                statusEl.innerText = "❌ কানেকশন ব্যর্থ হয়েছে! আবার চেষ্টা করুন।";
+            });
+        });
+
+        peer.on('call', call => {
+            call.answer(localVoiceStream || undefined);
+            handleIncomingVoiceCall(call);
+        });
+
+        peer.on('error', err => {
+            statusEl.innerText = "❌ রুম কোডটি ভুল অথবা হোস্ট অনলাইনে নেই! (" + err.type + ")";
+        });
+    }
+
+    function sendActionToNetwork(payload) {
+        if (isHost) {
+            connections.forEach(c => { if (c.open) c.send(payload); });
+        } else if (hostConn && hostConn.open) {
+            hostConn.send(payload);
+        }
+    }
+
+    function ensureParticipantExists(pData) {
+        let p = allParticipants.find(x => x.id === pData.id);
+        if (!p) {
+            const col = camoColors[allParticipants.length % camoColors.length];
+            const m = createPlayerCharacter(col, pData.name, pData.isSeeker);
+            scene.add(m);
+            p = {
+                id: pData.id, isBot: Boolean(pData.isBot), name: pData.name,
+                mesh: m, baseColor: col, isSeeker: Boolean(pData.isSeeker), speed: 0.08
+            };
+            allParticipants.push(p);
+            if (scores[pData.name] === undefined) scores[pData.name] = 0;
+            renderLeaderboard();
+        }
+        return p;
+    }
+
+    function handleHostIncomingData(data, senderConn) {
+        if (data.type === 'join_hello') {
+            const friend = ensureParticipantExists({ id: data.id, name: data.name, isBot: false, isSeeker: false });
+            friend.mesh.position.set(data.x, 0, data.z);
+            scores[data.name] = 0;
+            renderLeaderboard();
+            const joinMsg = `👋 বন্ধু "${data.name}" গেমে জয়েন করেছে!`;
+            showToast(joinMsg, "#38bdf8");
+            appendChatMessage("সিস্টেম", joinMsg);
+            sendActionToNetwork({ type: 'toast_event', msg: joinMsg, col: "#38bdf8", snd: 'hint' });
+
+            // If Host already has Mic ON, call the new friend automatically!
+            if (localVoiceStream && peer) {
+                const call = peer.call(data.id, localVoiceStream);
+                if (call) handleIncomingVoiceCall(call);
+            }
+        } else if (data.type === 'client_move') {
+            const friend = ensureParticipantExists(data);
+            friend.mesh.position.set(data.x, data.y || 0, data.z);
+            friend.mesh.rotation.y = data.rot;
+            setCrouchState(friend.mesh, data.crouched);
+            friend.mesh.userData.bananaDisguise = data.banana;
+            friend.mesh.userData.bananaCamo.visible = data.banana;
+            friend.mesh.userData.diving = data.diving;
+            friend.mesh.userData.torchOn = data.torchOn;
+            if (friend.isSeeker) {
+                friend.mesh.userData.spotLight.visible = data.torchOn;
+                friend.mesh.userData.beamCone.visible = data.torchOn;
+            }
+        } else if (data.type === 'chat_msg') {
+            appendChatMessage(data.sender, data.text);
+            connections.forEach(c => { if (c !== senderConn && c.open) c.send(data); });
+        } else if (data.type === 'ripple' || data.type === 'cracker' || data.type === 'decoy') {
+            if (data.type === 'ripple') { playSound(data.snd); createSoundRipple(data.x, data.z, data.col); showToast(data.msg, "#ffca28"); }
+            if (data.type === 'cracker') { playSound('cracker'); createSoundRipple(data.x, data.z, 0xfef08a); if (currentSeekerEntity.id === myId) seekerBlindUntil = Date.now() + 3500; }
+            if (data.type === 'decoy') spawnDecoyAt(data.x, data.z, data.owner);
+            connections.forEach(c => { if (c !== senderConn && c.open) c.send(data); });
+        }
+    }
+
+    function handleClientIncomingData(data) {
+        if (data.type === 'world_snapshot') {
+            const onlineRealCount = data.players.filter(x => !x.isBot).length;
+            document.getElementById('peer-count').innerText = "Online Friends: " + onlineRealCount;
+            document.getElementById('pill-peers').innerText = onlineRealCount;
+            Object.assign(scores, data.scores);
+            if (scores[myName] !== undefined) document.getElementById('my-score').innerText = scores[myName] + " PTS";
+
+            data.players.forEach(pState => {
+                const p = ensureParticipantExists(pState);
+                if (p.id !== myId) {
+                    p.mesh.position.set(pState.x, pState.y || 0, pState.z);
+                    p.mesh.rotation.y = pState.rot;
+                    setCrouchState(p.mesh, pState.crouched);
+                    p.mesh.userData.bananaCamo.visible = pState.banana;
+                    p.mesh.userData.diving = pState.diving;
+                    p.mesh.userData.torchOn = pState.torchOn;
+                }
+                if (pState.id === data.seekerId && (!currentSeekerEntity || currentSeekerEntity.id !== data.seekerId)) {
+                    setEntityAsSeeker(p);
+                }
+                if (p.isSeeker) {
+                    p.mesh.userData.spotLight.visible = pState.torchOn;
+                    p.mesh.userData.beamCone.visible = pState.torchOn;
+                }
+            });
+            renderLeaderboard();
+        } else if (data.type === 'chat_msg') {
+            appendChatMessage(data.sender, data.text);
+        } else if (data.type === 'teleport_me') {
+            if (data.targetId === myId && myMesh) teleportToRandomCover(myMesh);
+        } else if (data.type === 'toast_event') {
+            if (data.snd) playSound(data.snd);
+            showToast(data.msg, data.col);
+        } else if (data.type === 'ripple') {
+            playSound(data.snd); createSoundRipple(data.x, data.z, data.col); showToast(data.msg, "#ffca28");
+        } else if (data.type === 'cracker') {
+            playSound('cracker'); createSoundRipple(data.x, data.z, 0xfef08a);
+            if (currentSeekerEntity && currentSeekerEntity.id === myId) seekerBlindUntil = Date.now() + 3500;
+        } else if (data.type === 'decoy') {
+            spawnDecoyAt(data.x, data.z, data.owner);
+        }
+    }
+
+    setInterval(() => {
+        if (!gameRunning || gameOver || !myMesh) return;
+        if (isHost && connections.length > 0) {
+            const snapshot = allParticipants.map(p => ({
+                id: p.id, name: p.name, isBot: p.isBot, isSeeker: p.isSeeker,
+                x: Number(p.mesh.position.x.toFixed(2)),
+                y: Number(p.mesh.position.y.toFixed(2)),
+                z: Number(p.mesh.position.z.toFixed(2)),
+                rot: Number(p.mesh.rotation.y.toFixed(2)),
+                crouched: p.mesh.userData.crouched,
+                banana: p.mesh.userData.bananaDisguise,
+                diving: p.mesh.userData.diving,
+                torchOn: p.mesh.userData.torchOn
+            }));
+            connections.forEach(c => {
+                if (c.open) c.send({
+                    type: 'world_snapshot',
+                    seekerId: currentSeekerEntity ? currentSeekerEntity.id : myId,
+                    scores,
+                    players: snapshot
+                });
+            });
+        } else if (!isHost && hostConn && hostConn.open) {
+            const ud = myMesh.userData;
+            hostConn.send({
+                type: 'client_move', id: myId, name: myName,
+                x: Number(myMesh.position.x.toFixed(2)),
+                y: Number(myMesh.position.y.toFixed(2)),
+                z: Number(myMesh.position.z.toFixed(2)),
+                rot: Number(myMesh.rotation.y.toFixed(2)),
+                crouched: ud.crouched, banana: ud.bananaDisguise, diving: ud.diving, torchOn: ud.torchOn
+            });
+        }
+    }, 50);
+
+    // =========================================================================
+    // 8. TIMERS, ELECTRICITY RETURN & HINT RADAR
+    // =========================================================================
+    function showToast(msg, bg = "#ffca28") {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.background = bg; t.style.display = 'block';
+        clearTimeout(t.timer);
+        t.timer = setTimeout(() => t.style.display = 'none', 3400);
+    }
+
+    function setElectricityState(on) {
+        electricityOn = on;
+        const pStatus = document.getElementById('power-status');
+        if (on) {
+            playSound('power_on');
+            hemiLight.intensity = 2.1; moonLight.intensity = 1.8; poleLight.intensity = 2.5;
+            electricityLights.forEach(l => l.intensity = 2.2);
+            pStatus.innerText = "💡 কারেন্ট চলে এসেছে! (১০ সেকেন্ড সব আলো জ্বলবে!)";
+            pStatus.style.color = "#fde047";
+            showToast("⚡ হঠাৎ গ্রামে কারেন্ট চলে এসেছে! তাড়াতাড়ি ঝোপের ভেতর লুকান!", "#fde047");
+        } else {
+            hemiLight.intensity = 0.25; moonLight.intensity = 0.25; poleLight.intensity = 0.85;
+            electricityLights.forEach(l => l.intensity = 0);
+            pStatus.innerText = `🌑 আবার লোডশেডিং! (পরবর্তী কারেন্ট: ${powerCycleTimer}s)`;
+            pStatus.style.color = "#38bdf8";
+            showToast("🌑 আবার কারেন্ট চলে গেছে! লোডশেডিং শুরু!", "#38bdf8");
+        }
+    }
+
+    function triggerGlobalHint() {
+        playSound('hint');
+        showToast("💡 ১৫ সেকেন্ডের হিন্ট রাডার! ৩.৫ সেকেন্ডের জন্য সব লুকানো খেলোয়াড় দেখা যাচ্ছে!", "#fde047");
+        hintPulseDuration = 3.5;
+        allParticipants.forEach(p => {
+            if (!p.isSeeker && !p.mesh.userData.diving) {
+                p.mesh.userData.sonarRing.visible = true;
+                p.mesh.userData.beacon.visible = true;
+                p.mesh.userData.nameSprite.visible = true;
+            }
+        });
+    }
+
+    function hideAllHints() {
+        allParticipants.forEach(p => {
+            p.mesh.userData.sonarRing.visible = false;
+            p.mesh.userData.beacon.visible = false;
+            p.mesh.userData.nameSprite.visible = false;
+        });
+    }
+
+    setInterval(() => {
+        if (!gameRunning || gameOver) return;
+
+        matchSecondsLeft -= 1;
+        const mins = String(Math.floor(matchSecondsLeft / 60)).padStart(2, '0');
+        const secs = String(matchSecondsLeft % 60).padStart(2, '0');
+        document.getElementById('match-timer').innerText = `${mins}:${secs}`;
+        if (matchSecondsLeft <= 0) {
+            gameOver = true;
+            const modal = document.getElementById('end-modal');
+            const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            document.getElementById('end-desc').innerHTML = `১০ মিনিটের ম্যাচে <b>${sorted[0][0]}</b> সর্বোচ্চ <b>${sorted[0][1]} পয়েন্ট</b> নিয়ে চ্যাম্পিয়ন! 🎉`;
+            document.getElementById('final-standings').innerHTML = sorted.slice(0, 6).map(([n, p], i) => `
+                <div style="display:flex; justify-content:space-between; padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13.5px;">
+                    <span><b>#${i + 1} ${n}</b></span><span style="color:#4ade80; font-weight:bold;">${p} PTS</span>
+                </div>
+            `).join('');
+            modal.style.display = 'block';
+            return;
+        }
+
+        if (isHost && matchSecondsLeft % 10 === 0) {
+            allParticipants.forEach(p => { if (!p.isSeeker) addScore(p.name, 10); });
+        }
+
+        const now = Date.now();
+        const slEl = document.getElementById('slippers-status');
+        if (now < slippersActiveUntil) { slEl.innerText = `সক্রিয় (${Math.ceil((slippersActiveUntil - now) / 1000)}s)`; slEl.style.color = "#fde047"; }
+        else if (now < slippersCooldownUntil) { slEl.innerText = `অপেক্ষা (${Math.ceil((slippersCooldownUntil - now) / 1000)}s)`; slEl.style.color = "#94a3b8"; }
+        else { slEl.innerText = "প্রস্তুত (Press X)"; slEl.style.color = "#4ade80"; }
+
+        powerCycleTimer -= 1;
+        if (!electricityOn) {
+            document.getElementById('power-status').innerText = `🌑 লোডশেডিং চলছে (কারেন্ট আসবে: ${powerCycleTimer}s)`;
+            if (powerCycleTimer <= 0) { setElectricityState(true); powerCycleTimer = 10; }
+        } else if (powerCycleTimer <= 0) {
+            powerCycleTimer = 85; setElectricityState(false);
+        }
+
+        nextLightningTime -= 1;
+        if (nextLightningTime <= 0) {
+            if (!electricityOn) {
+                playSound('thunder');
+                const fl = document.getElementById('flash-overlay');
+                fl.style.opacity = '0.42'; hemiLight.intensity = 2.5;
+                setTimeout(() => { fl.style.opacity = '0'; if (!electricityOn) hemiLight.intensity = 0.25; }, 200);
+            }
+            nextLightningTime = 20 + Math.floor(Math.random() * 15);
+        }
+
+        if (hintPulseDuration > 0) {
+            hintPulseDuration -= 1;
+            if (hintPulseDuration <= 0) hideAllHints();
+        } else {
+            hintTimer -= 1;
+            if (hintTimer <= 0) { triggerGlobalHint(); hintTimer = HINT_INTERVAL; }
+            document.getElementById('hint-sec').innerText = hintTimer + "s";
+            document.getElementById('hint-bar').style.width = ((hintTimer / HINT_INTERVAL) * 100) + "%";
+        }
+    }, 1000);
+
+    // =========================================================================
+    // 9. KEYBOARD & MOBILE INPUTS
+    // =========================================================================
+    const keys = {};
+    let touchMoveX = 0, touchMoveZ = 0, touchSprint = false, touchDive = false;
+
+    window.addEventListener('keydown', e => {
+        if (document.activeElement === document.getElementById('chat-input')) return;
+        keys[e.code] = true;
+        if (!gameRunning || !myMesh) return;
+        if (e.code === 'Enter') { e.preventDefault(); toggleChatPanel(); return; }
+        if (e.code === 'KeyF') toggleFlashlight();
+        if (e.code === 'KeyC') toggleCrouchMyPlayer();
+        if (e.code === 'KeyG') triggerStoneThrow(myMesh);
+        if (e.code === 'KeyB') triggerPlaceDecoy();
+        if (e.code === 'KeyQ') throwFirecracker();
+        if (e.code === 'KeyX') activateSlippersInHand();
+        if (e.code === 'KeyE') toggleBananaDisguise();
+        if (e.code === 'KeyV') toggleCameraView();
+        if (e.code === 'Digit1') triggerDeshiTaunt(1);
+        if (e.code === 'Digit2') triggerDeshiTaunt(2);
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function toggleFlashlight() {
+        if (!myMesh || !myMesh.userData.isSeeker || battery <= 0) return;
+        const ud = myMesh.userData;
+        ud.torchOn = !ud.torchOn;
+        ud.spotLight.visible = ud.torchOn;
+        ud.beamCone.visible = ud.torchOn;
+    }
+
+    function toggleCrouchMyPlayer() {
+        if (!myMesh || myMesh.userData.isSeeker) return;
+        setCrouchState(myMesh, !myMesh.userData.crouched);
+    }
+
+    function toggleCameraView() {
+        isFirstPerson = !isFirstPerson;
+        if (myMesh) {
+            myMesh.userData.torso.visible = !isFirstPerson;
+            myMesh.userData.head.visible = !isFirstPerson;
+        }
+        showToast(isFirstPerson ? "👁️ ফার্স্ট-পারসন হরর ভিউ চালু!" : "🎥 থার্ড-পারসন ভিউ চালু!", "#38bdf8");
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+    window.addEventListener('mousemove', e => {
+        if (!gameRunning || !myMesh) return;
+        if (isFirstPerson) {
+            const normX = (e.clientX / window.innerWidth) - 0.5;
+            myMesh.rotation.y = -normX * Math.PI * 2.2;
+        } else {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const pt = new THREE.Vector3();
+            raycaster.ray.intersectPlane(groundPlane, pt);
+            if (pt) myMesh.rotation.y = Math.atan2(pt.x - myMesh.position.x, pt.z - myMesh.position.z);
+        }
+    });
+
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    let joyActive = false;
+
+    joyZone.addEventListener('touchstart', e => { document.getElementById('mobile-controls').style.display = 'block'; joyActive = true; updateJoystick(e.touches[0]); });
+    joyZone.addEventListener('touchmove', e => { if (joyActive) updateJoystick(e.touches[0]); });
+    const endJoy = () => { joyActive = false; touchMoveX = 0; touchMoveZ = 0; joyKnob.style.transform = `translate(0px, 0px)`; };
+    joyZone.addEventListener('touchend', endJoy); joyZone.addEventListener('touchcancel', endJoy);
+
+    function updateJoystick(touch) {
+        const rect = joyZone.getBoundingClientRect();
+        let dx = touch.clientX - (rect.left + rect.width / 2);
+        let dy = touch.clientY - (rect.top + rect.height / 2);
+        const maxR = 38, dist = Math.hypot(dx, dy);
+        if (dist > maxR) { dx = (dx / dist) * maxR; dy = (dy / dist) * maxR; }
+        joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+        touchMoveX = dx / maxR; touchMoveZ = dy / maxR;
+        if (dist > 6 && myMesh) myMesh.rotation.y = Math.atan2(touchMoveX, touchMoveZ);
+    }
+
+    document.getElementById('btn-sprint').addEventListener('touchstart', () => touchSprint = true);
+    document.getElementById('btn-sprint').addEventListener('touchend', () => touchSprint = false);
+    document.getElementById('btn-dive').addEventListener('touchstart', () => touchDive = true);
+    document.getElementById('btn-dive').addEventListener('touchend', () => touchDive = false);
+
+    // =========================================================================
+    // 10. MAIN GAME LOOP
+    // =========================================================================
+    function resolveCollision(x, z) {
+        let nx = Math.max(-72, Math.min(72, x)), nz = Math.max(-72, Math.min(72, z));
+        for (const ob of obstacles) {
+            const dx = nx - ob.x, dz = nz - ob.z, dist = Math.hypot(dx, dz);
+            if (dist < ob.radius && dist > 0.001) {
+                nx = ob.x + (dx / dist) * ob.radius; nz = ob.z + (dz / dist) * ob.radius;
+            }
+        }
+        return { x: nx, z: nz };
+    }
+
+    function hasLineOfSight(p1, p2) {
+        const dx = p2.x - p1.x, dz = p2.z - p1.z, dist = Math.hypot(dx, dz);
+        const steps = Math.floor(dist / 1.4);
+        for (let i = 1; i < steps; i++) {
+            const cx = p1.x + (dx * i) / steps, cz = p1.z + (dz * i) / steps;
+            for (const ob of obstacles) {
+                if (Math.hypot(cx - ob.x, cz - ob.z) < ob.radius * 0.85) return false;
+            }
+        }
+        return true;
+    }
+
+    function isInsideConcealBush(pos) {
+        for (const b of concealBushes) {
+            if (Math.hypot(pos.x - b.x, pos.z - b.z) < b.radius) return true;
+        }
+        return false;
+    }
+
+    function animateLegs(mesh, moving, mult = 1, hasSlippersInHand = false) {
+        const ud = mesh.userData;
+        if (moving) {
+            ud.walkCycle += 0.22 * mult;
+            ud.leftLeg.rotation.x = Math.sin(ud.walkCycle) * 0.65;
+            ud.rightLeg.rotation.x = -Math.sin(ud.walkCycle) * 0.65;
+            ud.stepTimer += 1;
+            if (ud.stepTimer > (mult > 1.2 ? 12 : 17)) {
+                ud.stepTimer = 0;
+                if (!hasSlippersInHand && !ud.diving) spawnFootprint(mesh.position.x, mesh.position.z, ud.isSeeker);
+            }
+        } else {
+            ud.leftLeg.rotation.x = 0;
+            ud.rightLeg.rotation.x = 0;
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const now = Date.now();
+
+        const rPos = rainSystem.geometry.attributes.position.array;
+        const camX = myMesh ? myMesh.position.x : 0, camZ = myMesh ? myMesh.position.z : 0;
+        for (let i = 0; i < rainCount; i++) {
+            rPos[i * 6 + 1] -= 0.85; rPos[i * 6 + 4] -= 0.85;
+            if (rPos[i * 6 + 1] < 0) {
+                const nx = camX + (Math.random() - 0.5) * 90, nz = camZ + (Math.random() - 0.5) * 90;
+                rPos[i * 6] = nx; rPos[i * 6 + 1] = 38; rPos[i * 6 + 2] = nz;
+                rPos[i * 6 + 3] = nx - 0.15; rPos[i * 6 + 4] = 36.7; rPos[i * 6 + 5] = nz;
+            }
+        }
+        rainSystem.geometry.attributes.position.needsUpdate = true;
+
+        for (let i = footprints.length - 1; i >= 0; i--) {
+            const age = now - footprints[i].created;
+            if (age > 4500) { scene.remove(footprints[i].mesh); footprints.splice(i, 1); }
+            else footprints[i].mesh.material.opacity = 0.48 * (1 - age / 4500);
+        }
+        for (let i = soundRipples.length - 1; i >= 0; i--) {
+            const age = now - soundRipples[i].created;
+            if (age > 2400) { scene.remove(soundRipples[i].mesh); soundRipples.splice(i, 1); }
+            else {
+                soundRipples[i].mesh.scale.setScalar(1 + (age / 2400) * 6.5);
+                soundRipples[i].mesh.material.opacity = 0.9 * (1 - age / 2400);
+            }
+        }
+
+        if (!gameRunning || gameOver || !myMesh || !currentSeekerEntity) {
+            renderer.render(scene, camera);
+            return;
+        }
+
+        const isStunned = (now < slipStunUntil) || (myMesh.userData.isSeeker && now < seekerBlindUntil);
+        const hasSlippers = (now < slippersActiveUntil);
+        let vx = touchMoveX, vz = touchMoveZ;
+
+        if (!isStunned) {
+            if (keys['KeyW'] || keys['ArrowUp']) vz -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) vz += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
+        }
+
+        const inPond = Math.hypot(myMesh.position.x - pondPos.x, myMesh.position.z - pondPos.z) < pondPos.radius - 0.8;
+        const wantsDive = (keys['Space'] || touchDive) && inPond && !myMesh.userData.isSeeker && breath > 5;
+
+        if (wantsDive) {
+            myMesh.userData.diving = true;
+            myMesh.position.y = -1.65;
+            breath = Math.max(0, breath - 0.38);
+        } else {
+            myMesh.userData.diving = false;
+            myMesh.position.y = inPond ? -0.45 : 0;
+            breath = Math.min(100, breath + 0.35);
+        }
+        document.getElementById('breath-bar').style.width = Math.round(breath) + "%";
+        document.getElementById('breath-txt').innerText = Math.round(breath) + "%";
+
+        const wantsSprint = (keys['ShiftLeft'] || keys['ShiftRight'] || touchSprint) && !myMesh.userData.crouched && !isStunned;
+        const moving = (Math.hypot(vx, vz) > 0.05) && !isStunned;
+
+        if (moving) {
+            let speed = myMesh.userData.crouched ? 0.085 : (wantsSprint ? 0.265 : 0.165);
+            if (hasSlippers) speed *= 1.25;
+            if (inPond) speed *= 0.72;
+
+            if (isFirstPerson) {
+                const forward = -vz, strafe = vx;
+                const sin = Math.sin(myMesh.rotation.y), cos = Math.cos(myMesh.rotation.y);
+                vx = forward * sin - strafe * cos;
+                vz = forward * cos + strafe * sin;
+            }
+            const len = Math.hypot(vx, vz);
+            const next = resolveCollision(myMesh.position.x + (vx / len) * speed, myMesh.position.z + (vz / len) * speed);
+            myMesh.position.x = next.x; myMesh.position.z = next.z;
+
+            if (wantsSprint && !hasSlippers) {
+                stamina = Math.max(0, stamina - 0.52);
+                if (stamina <= 0.5) {
+                    slipStunUntil = now + 2000;
+                    myMesh.rotation.x = -Math.PI / 2.2;
+                    playSound('splash');
+                    createSoundRipple(myMesh.position.x, myMesh.position.z, 0x38bdf8);
+                    showToast("🌧️ ধপাস! স্ট্যামিনা শেষ হয়ে বৃষ্টির কাদায় পিছলে পড়েছেন!", "#f87171");
+                }
+            } else {
+                stamina = Math.min(100, stamina + 0.25);
+            }
+        } else if (!isStunned) {
+            myMesh.rotation.x = 0;
+            stamina = Math.min(100, stamina + 0.42);
+        }
+
+        document.getElementById('stamina-bar').style.width = Math.round(stamina) + "%";
+        document.getElementById('stamina-txt').innerText = Math.round(stamina) + "%";
+        animateLegs(myMesh, moving, wantsSprint ? 1.5 : 1, hasSlippers);
+
+        // Grumpy Uncle Patrol
+        const distUncle = Math.hypot(uncleMesh.position.x - uncleTarget.x, uncleMesh.position.z - uncleTarget.z);
+        if (distUncle < 3 || Math.random() < 0.008) uncleTarget = { x: (Math.random() - 0.5) * 65, z: (Math.random() - 0.5) * 65 };
+        const uDir = new THREE.Vector3(uncleTarget.x - uncleMesh.position.x, 0, uncleTarget.z - uncleMesh.position.z).normalize();
+        const uNext = resolveCollision(uncleMesh.position.x + uDir.x * 0.085, uncleMesh.position.z + uDir.z * 0.085);
+        uncleMesh.position.x = uNext.x; uncleMesh.position.z = uNext.z;
+        uncleMesh.rotation.y = Math.atan2(uDir.x, uDir.z);
+        animateLegs(uncleMesh, true, 1, true);
+
+        // Heartbeat Tension when Seeker is near
+        const seeker = currentSeekerEntity;
+        const seekerPos = seeker.mesh.position;
+        const vig = document.getElementById('vignette');
+
+        if (!myMesh.userData.isSeeker) {
+            const distFromChor = myMesh.position.distanceTo(seekerPos);
+            if (distFromChor < 16) {
+                vig.style.boxShadow = "inset 0 0 85px rgba(220, 38, 38, 0.75)";
+                if (now - lastHeartbeatTime > Math.max(320, distFromChor * 45)) {
+                    lastHeartbeatTime = now;
+                    playSound('heartbeat');
+                }
+            } else vig.style.boxShadow = "none";
+        } else vig.style.boxShadow = "none";
+
+        // Mosquito Meter
+        if (!myMesh.userData.isSeeker) {
+            if (!moving && !myMesh.userData.diving) {
+                mosquitoMeter = Math.min(100, mosquitoMeter + 0.1);
+                if (mosquitoMeter >= 100) {
+                    mosquitoMeter = 0;
+                    playSound('slap_cough');
+                    createSoundRipple(myMesh.position.x, myMesh.position.z, 0xf43f5e);
+                    sendActionToNetwork({ type: 'ripple', x: myMesh.position.x, z: myMesh.position.z, col: 0xf43f5e, snd: 'slap_cough', msg: `🦟 মশার কামড়ে ${myName} কাশি দিয়েছে!` });
+                    showToast("🦟 চাটাস! মশার কামড়ে চড় ও কাশির শব্দে লোকেশন ফাঁস!", "#f43f5e");
+                }
+            } else mosquitoMeter = Math.max(0, mosquitoMeter - 0.35);
+            document.getElementById('mosquito-bar').style.width = Math.round(mosquitoMeter) + "%";
+            document.getElementById('mosquito-txt').innerText = Math.round(mosquitoMeter) + "%";
+        }
+
+        // Torch Battery
+        if (myMesh.userData.isSeeker) {
+            const ud = myMesh.userData;
+            if (ud.torchOn && battery > 0) {
+                battery = Math.max(0, battery - 0.014);
+                if (battery <= 0) { ud.torchOn = false; ud.spotLight.visible = false; ud.beamCone.visible = false; }
+            } else battery = Math.min(100, battery + 0.15);
+            document.getElementById('battery-bar').style.width = Math.round(battery) + "%";
+            document.getElementById('battery-txt').innerText = Math.round(battery) + "%";
+        }
+
+        // Camera Follow
+        if (isFirstPerson) {
+            const eyeY = myMesh.userData.diving ? 0.3 : (myMesh.userData.crouched ? 1.35 : 2.05);
+            camera.position.set(myMesh.position.x, eyeY, myMesh.position.z);
+            const lookX = myMesh.position.x + Math.sin(myMesh.rotation.y) * 10;
+            const lookZ = myMesh.position.z + Math.cos(myMesh.rotation.y) * 10;
+            camera.lookAt(lookX, eyeY - 0.15, lookZ);
+        } else {
+            camera.position.x += (myMesh.position.x - camera.position.x) * 0.09;
+            camera.position.z += (myMesh.position.z + 20 - camera.position.z) * 0.09;
+            camera.position.y = 22;
+            camera.lookAt(myMesh.position.x, 0.8, myMesh.position.z - 2.5);
+        }
+
+        // HOST AUTHORITATIVE LOGIC
+        if (isHost) {
+            const seekerLook = new THREE.Vector3(Math.sin(seeker.mesh.rotation.y), 0, Math.cos(seeker.mesh.rotation.y)).normalize();
+
+            activeDecoys.forEach(dec => {
+                if (!dec.active) return;
+                const d = seekerPos.distanceTo(dec.mesh.position);
+                const toDec = new THREE.Vector3().subVectors(dec.mesh.position, seekerPos).normalize();
+                if (d < 9.5 && seekerLook.angleTo(toDec) < 0.35 && seeker.mesh.userData.torchOn) {
+                    dec.active = false; dec.mesh.visible = false;
+                    addScore(seeker.name, -20); addScore(dec.owner, 50);
+                    const dMsg = `🎭 বোকা বনেছে! ${seeker.name} ভুয়া কাকতাড়ুয়াকে ধাপ্পা দিয়ে -20 পয়েন্ট হারিয়েছে!`;
+                    showToast(dMsg, "#a855f7");
+                    sendActionToNetwork({ type: 'toast_event', msg: dMsg, col: "#a855f7", snd: 'tuk' });
+                }
+            });
+
+            if (seeker.isBot && now > roleSwapImmunityUntil && now > seekerBlindUntil) {
+                let targetPos = seeker.patrolTarget;
+                if (latestNoiseTarget && now < latestNoiseTarget.expires) targetPos = latestNoiseTarget;
+                else if (Math.hypot(seekerPos.x - targetPos.x, seekerPos.z - targetPos.z) < 3.5 || Math.random() < 0.01) {
+                    const randB = concealBushes[Math.floor(Math.random() * concealBushes.length)];
+                    seeker.patrolTarget = { x: randB.x, z: randB.z };
+                }
+                const dir = new THREE.Vector3(targetPos.x - seekerPos.x, 0, targetPos.z - seekerPos.z).normalize();
+                const nextS = resolveCollision(seekerPos.x + dir.x * 0.145, seekerPos.z + dir.z * 0.145);
+                seekerPos.x = nextS.x; seekerPos.z = nextS.z;
+                seeker.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                animateLegs(seeker.mesh, true, 1.2, false);
+            }
+
+            allParticipants.forEach(p => {
+                const ud = p.mesh.userData;
+                if (ud.sonarRing.visible) {
+                    ud.sonarRing.scale.setScalar(1 + ((now * 0.0045) % 3.0));
+                    ud.beacon.rotation.y += 0.07;
+                }
+                if (p.isSeeker || ud.diving) return;
+
+                const distToSeeker = seekerPos.distanceTo(p.mesh.position);
+                const toHider = new THREE.Vector3().subVectors(p.mesh.position, seekerPos).normalize();
+                const angle = seekerLook.angleTo(toHider);
+
+                const inCover = isInsideConcealBush(p.mesh.position) || ud.crouched;
+                const torchActive = (seeker.mesh.userData.torchOn || electricityOn) && (now > seekerBlindUntil);
+                const maxCatchDist = ud.bananaDisguise ? 4.2 : (electricityOn ? (inCover ? 10 : 22) : (torchActive ? (inCover ? 8.0 : 17.0) : 2.2));
+                const maxCatchAngle = inCover ? 0.30 : 0.42;
+
+                // CAUGHT ('DHAPPA!') -> +100 PTS & AUTO ROLE-SWAP!
+                if (now > roleSwapImmunityUntil && (distToSeeker < 2.1 || (torchActive && distToSeeker < maxCatchDist && angle < maxCatchAngle && hasLineOfSight(seekerPos, p.mesh.position)))) {
+                    const oldSeeker = seeker;
+                    addScore(oldSeeker.name, 100);
+                    hintTimer = HINT_INTERVAL;
+                    hideAllHints();
+                    playSound('dhappa');
+
+                    teleportToRandomCover(oldSeeker.mesh);
+                    sendActionToNetwork({ type: 'teleport_me', targetId: oldSeeker.id });
+                    setEntityAsSeeker(p);
+
+                    const cMsg = `🔦 ধাপ্পা! ${oldSeeker.name} ধরে ফেলেছে ${p.name}-কে! এখন থেকে ${p.name} নতুন চোর!`;
+                    showToast(cMsg, "#4ade80");
+                    sendActionToNetwork({ type: 'toast_event', msg: cMsg, col: "#4ade80", snd: 'dhappa' });
+                    return;
+                }
+
+                if (p.isBot) {
+                    const seekerDistFromPole = seekerPos.length();
+                    if (seekerDistFromPole > 15 && Math.random() < 0.014) {
+                        p.sneaking = true; setCrouchState(p.mesh, false);
+                    } else if (seekerDistFromPole < 9 && p.sneaking && p.mesh.position.length() > 7) {
+                        p.sneaking = false; setCrouchState(p.mesh, true);
+                    }
+                    let botMoved = false;
+                    if (p.sneaking) {
+                        const dirToPole = new THREE.Vector3(0, 0, 0).sub(p.mesh.position).normalize();
+                        const nextP = resolveCollision(p.mesh.position.x + dirToPole.x * p.speed, p.mesh.position.z + dirToPole.z * p.speed);
+                        p.mesh.position.set(nextP.x, 0, nextP.z);
+                        p.mesh.rotation.y = Math.atan2(dirToPole.x, dirToPole.z);
+                        botMoved = true;
+                    }
+                    animateLegs(p.mesh, botMoved, 1.15, false);
+                }
+
+                // Reached Central Pole for 'TUK'! (+150 PTS)
+                if (p.mesh.position.length() < 2.75) {
+                    addScore(p.name, 150);
+                    playSound('tuk');
+                    teleportToRandomCover(p.mesh);
+                    sendActionToNetwork({ type: 'teleport_me', targetId: p.id });
+                    p.sneaking = false;
+
+                    const tMsg = `🏃‍♂️ ‘টুক’! ${p.name} খুঁটি ছুঁয়ে +150 পয়েন্ট নিয়ে আবার লুকিয়ে পড়েছে!`;
+                    showToast(tMsg, "#38bdf8");
+                    sendActionToNetwork({ type: 'toast_event', msg: tMsg, col: "#38bdf8", snd: 'tuk' });
+                }
+            });
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>
